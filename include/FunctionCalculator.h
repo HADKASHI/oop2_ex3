@@ -6,14 +6,15 @@
 #include <iosfwd>
 #include <optional>
 #include <iostream>
+#include <sstream>
 
 class Operation;
 
 class FunctionCalculator
 {
 public:
-    FunctionCalculator(std::istream& istr, std::ostream& ostr);
-    void run();
+    FunctionCalculator(std::ostream& ostr);
+    void run(std::istream& istr);
 
 private:
     void eval();
@@ -60,11 +61,11 @@ private:
     const ActionMap m_actions;
     OperationList m_operations;
     bool m_running = true;
-    std::istream& m_istr;
+    std::istringstream m_istr;
     std::ostream& m_ostr;
 
-    std::optional<int> readOperationIndex() const;
-    Action readAction() const;
+    std::optional<int> readOperationIndex();
+    Action readAction();
     void runAction(Action action);
 
     ActionMap createActions() const;

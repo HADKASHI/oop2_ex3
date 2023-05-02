@@ -13,21 +13,30 @@
 
 
 
-FunctionCalculator::FunctionCalculator(std::istream& istr, std::ostream& ostr)
-    : m_actions(createActions()), m_operations(createOperations()), m_istr(istr), m_ostr(ostr)
+FunctionCalculator::FunctionCalculator(std::ostream& ostr)
+    : m_actions(createActions()), m_operations(createOperations()), m_ostr(ostr)
 {
 }
 
-void FunctionCalculator::run()
+void FunctionCalculator::run(std::istream& istr)
 {
-    do
+    m_ostr << '\n';
+    printOperations();
+    m_ostr << "Enter command ('help' for the list of available commands): ";
+
+    std::string str;
+
+    while (m_running && std::getline(istr, str))
     {
+        m_istr = std::istringstream(str);
+        m_istr.exceptions(std::ios::failbit | std::ios::badbit);
+
+        const auto action = readAction();
+        runAction(action);
         m_ostr << '\n';
         printOperations();
         m_ostr << "Enter command ('help' for the list of available commands): ";
-        const auto action = readAction();
-        runAction(action);
-    } while (m_running);
+    } 
 }
 
 void FunctionCalculator::eval()
@@ -37,6 +46,12 @@ void FunctionCalculator::eval()
         const auto& operation = m_operations[*index];
         auto input = std::string();
         m_istr >> input;
+        //if(input.size() > m_maxStrLength) throw exception
+
+        if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+            //throw too many arguments
+            ;
+        //if(operation->compute(input).size() > maxStrLen) throw exception
         operation->print(m_ostr, input);
         m_ostr << " = " << operation->compute(input) << '\n';
     }
@@ -94,10 +109,12 @@ void FunctionCalculator::printOperations() const
     m_ostr << '\n';
 }
 
-std::optional<int> FunctionCalculator::readOperationIndex() const
+std::optional<int> FunctionCalculator::readOperationIndex()
 {
     auto i = 0;
     m_istr >> i;
+    
+
     if (i >= m_operations.size())
     {
         m_ostr << "Operation #" << i << " doesn't exist\n";
@@ -106,7 +123,7 @@ std::optional<int> FunctionCalculator::readOperationIndex() const
     return i;
 }
 
-FunctionCalculator::Action FunctionCalculator::readAction() const
+FunctionCalculator::Action FunctionCalculator::readAction()
 {
     auto action = std::string();
     m_istr >> action;
