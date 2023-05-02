@@ -4,6 +4,7 @@
 
 int main()
 {
+	std::cout << "Hellow from Ziv";
     FunctionCalculator(std::cin, std::cout).run();
 
 }
