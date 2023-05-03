@@ -4,8 +4,6 @@
 
 int main() try
 {
-	auto iss = std::istringstream("d");
-	iss.exceptions(std::ios::failbit | std::ios::badbit);
     FunctionCalculator(std::cout).run(std::cin);
 }
 

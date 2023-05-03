@@ -22,12 +22,18 @@ private:
     void mul();
     void del();
     void read();
+    void resize();
     void help();
     void exit();
+
+    bool stopReadFile();
 
     template <typename FuncType>
     void binaryFunc()
     {
+        if (m_operations.size() == capacity.m_upperLimit)
+            throw std::exception("No space for new operations. consider resize");
+
         if (auto f0 = readOperationIndex(), f1 = readOperationIndex(); f0 && f1)
         {
             if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
@@ -49,6 +55,7 @@ private:
         Comp,
         Del,
         Read,
+        Resize,
         Help,
         Exit,
     };
@@ -70,6 +77,13 @@ private:
     std::istringstream m_istr;
     std::ostream& m_ostr;
     int m_maxStrLen = 20;
+    
+    struct Capacity
+    {
+        int m_upperLimit = 100;
+        int m_lowerLimit = 3;
+    };
+    Capacity capacity;
 
     std::optional<int> readOperationIndex();
     Action readAction();

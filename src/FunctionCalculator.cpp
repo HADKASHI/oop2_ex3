@@ -17,6 +17,43 @@
 FunctionCalculator::FunctionCalculator(std::ostream& ostr)
     : m_actions(createActions()), m_operations(createOperations()), m_ostr(ostr)
 {
+    bool valid;
+    do
+    {
+        valid = true;
+
+        std::cout << "Please enter max operations number (between 3 to 100): ";
+        try
+        {
+            std::string input;
+            std::getline(std::cin, input);
+            m_istr = std::istringstream(input);
+            m_istr.exceptions(std::ios::failbit | std::ios::badbit);
+            resize();
+        }
+        catch (std::domain_error& e)
+        {
+            m_ostr << e.what() << std::endl;
+            valid = false;
+        }
+        catch (std::ios_base::failure)
+        {
+            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
+            m_ostr << "A string has been inserted instead of a integer\n" << std::endl;
+            valid = false;
+        }
+
+        catch (std::exception& e)
+        {
+            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
+            m_ostr << e.what() << std::endl;
+            valid = false;
+        }
+        
+        m_istr.clear();
+        m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    } while (!valid);
 }
 
 void FunctionCalculator::run(std::istream& istr)
@@ -35,39 +72,55 @@ void FunctionCalculator::run(std::istream& istr)
             const auto action = readAction();
             runAction(action);
         }
-        catch (std::invalid_argument& e)
-        {
-            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
-            m_ostr << e.what() << std::endl;
-            m_istr.clear();
-            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        }
+
         catch (std::ios_base::failure)
         {
             m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
             m_ostr << "A string has been inserted instead of a integer\n" << std::endl;
-            m_istr.clear();
-            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            if (m_inFile)
+            {
+                try {
+                    if (stopReadFile())
+                        break;
+                }
+                catch (std::exception& e)
+                {
+                    m_ostr << e.what() << std::endl;
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                }
+            }
         }
 
-        catch (std::out_of_range& e)
+        catch (std::exception& e)
         {
             m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
             m_ostr << e.what() << std::endl;
-            m_istr.clear();
-            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            if (m_inFile)
+            {
+                try {
+                    if (stopReadFile())
+                        break;
+                }
+                catch (std::exception& e)
+                {
+                    m_ostr << e.what() << std::endl;
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                }
+            }
         }
+
         if (!m_running)
             break;
 
-        //catch
-        // std::cout << m_istr.str() << "is not legal" << std::endl;
-        // std::cout << e,what() << std::endl;
-        //if(m_inFile) ask user if he wants to continue
-
+        m_istr.clear();
+        m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         m_ostr << '\n';
         printOperations();
         m_ostr << "Enter command ('help' for the list of available commands): ";
+
+
     }
 }
 
@@ -86,7 +139,7 @@ void FunctionCalculator::eval()
             throw std::out_of_range("too many arguments");
 
         if(operation->compute(input).size() > m_maxStrLen) 
-            throw std::out_of_range("string is to long\n");
+            throw std::out_of_range("string is too long\n");
         
         operation->print(m_ostr, input);
         m_ostr << " = " << operation->compute(input) << '\n';
@@ -94,6 +147,9 @@ void FunctionCalculator::eval()
 }
 void FunctionCalculator::substr()
 {
+    if (m_operations.size() == capacity.m_upperLimit)
+        throw std::exception("No space for new operations. consider resize");
+
     int start_index,chars_length;
     if (m_istr.eof())
         throw std::out_of_range("too few arguments");
@@ -117,6 +173,9 @@ void FunctionCalculator::substr()
 
 void FunctionCalculator::mul()
 {
+    if (m_operations.size() == capacity.m_upperLimit)
+        throw std::exception("No space for new operations. consider resize");
+
     if (m_istr.eof())
         throw std::out_of_range("too few arguments");
     int n;
@@ -136,6 +195,8 @@ void FunctionCalculator::mul()
 
 void FunctionCalculator::del()
 {
+    if (m_operations.size() == 0)
+        throw std::exception("Nothing to delete");
     if (auto i = readOperationIndex(); i)
     {
         if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
@@ -162,12 +223,45 @@ void FunctionCalculator::read()
     file.open(str);
 
     if (!file.is_open())
-        //throw file doesnt exist
-        ;
+        throw std::exception("File not found");
 
     m_inFile = true;
 
     run(file);    
+}
+
+void FunctionCalculator::resize()
+{
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments");
+
+    int cap;
+    m_istr >> cap;
+
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        throw std::out_of_range("too many arguments");
+
+    if (cap < 3 || cap > 100)
+        throw std::domain_error("Invalid capacity. Please try again\n");
+
+    if (cap < m_operations.size())
+    {
+        m_ostr << "Attention: your'e about to delete operations\n" <<
+            "Do you want to proceed? 'y/n' ";
+        
+        std::string choose;
+        std::cin >> choose;
+
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (choose != "y" && choose != "n")
+            throw std::exception("Invalid argument");
+
+        if (choose == "y")
+            m_operations.resize(cap);
+    }
+    capacity.m_upperLimit = cap;
 }
 
 void FunctionCalculator::help()
@@ -192,8 +286,29 @@ void FunctionCalculator::exit()
     m_running = false;
 }
 
+bool FunctionCalculator::stopReadFile()
+{
+    m_ostr << "Do you want the program to stop reading from the file? y/n\n";
+    
+    std::string input;
+    std::cin >> input;
+
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+
+    if (input != "y" && input != "n")
+        throw std::exception("Invalid argument");
+
+    if (input == "y")
+        return true;
+    return false;
+}
+
 void FunctionCalculator::printOperations() const
 {
+    m_ostr << "Attention: there are " << capacity.m_upperLimit - m_operations.size() <<
+        " more operations to add\n";
     m_ostr << "List of available string operations:\n";
     for (decltype(m_operations.size()) i = 0; i < m_operations.size(); ++i)
     {
@@ -228,7 +343,6 @@ FunctionCalculator::Action FunctionCalculator::readAction()
         return i->action;
     }
 
-    //exception here - invalid action
     throw std::invalid_argument("Action not found\n");
     return Action::Invalid;
 }
@@ -258,6 +372,7 @@ void FunctionCalculator::runAction(Action action)
             m_inFile = inFile;
             break;
         }
+        case Action::Resize:       resize();                   break;
         case Action::Help:         help();                     break;
         case Action::Exit:         exit();                     break;
     }
@@ -304,8 +419,13 @@ FunctionCalculator::ActionMap FunctionCalculator::createActions() const
         },
         {
             "read",
-            "file path - open and reads commands from file",
+            " file path - open and reads commands from file",
             Action::Read
+        },
+        {
+            "resize",
+            " num - resizes operations capacity to #num size",
+            Action::Resize
         },
         {
             "help",
