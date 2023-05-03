@@ -10,6 +10,7 @@
 #include "SubStr.h"
 #include <iostream>
 #include <algorithm>
+#include <fstream>
 
 
 
@@ -56,6 +57,13 @@ void FunctionCalculator::run(std::istream& istr)
         if (!m_running)
             break;
 
+        const auto action = readAction();
+        runAction(action);
+        //catch
+        // std::cout << m_istr.str() << "is not legal" << std::endl;
+        // std::cout << e,what() << std::endl;
+        //if(m_inFile) ask user if he wants to continue
+
         m_ostr << '\n';
         printOperations();
         m_ostr << "Enter command ('help' for the list of available commands): ";
@@ -86,6 +94,9 @@ void FunctionCalculator::substr()
 {
     int start_index,chars_length;
     m_istr >> start_index>> chars_length;
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
     m_operations.push_back(std::make_shared<SubStr>(start_index, chars_length));
 }
 
@@ -93,6 +104,9 @@ void FunctionCalculator::mul()
 {
     int n;
     m_istr >> n;
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
     if (auto i = readOperationIndex(); i)
     {
         m_operations.push_back(std::make_shared<Mul>(n, m_operations[*i]));
@@ -101,14 +115,43 @@ void FunctionCalculator::mul()
 
 void FunctionCalculator::del()
 {
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
     if (auto i = readOperationIndex(); i)
     {
         m_operations.erase(m_operations.begin() + *i);
     }
 }
 
+void FunctionCalculator::read()
+{
+    std::string str;
+
+    m_istr >> str;
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
+
+    std::ifstream file;
+
+    file.open(str);
+
+    if (!file.is_open())
+        //throw file doesnt exist
+        ;
+
+    m_inFile = true;
+
+    run(file);
+    
+}
+
 void FunctionCalculator::help()
 {
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
     m_ostr << "The available commands are:\n";
     for (const auto& action : m_actions)
     {
@@ -119,6 +162,9 @@ void FunctionCalculator::help()
 
 void FunctionCalculator::exit()
 {
+    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+        //throw too many arguments
+        ;
     m_ostr << "Goodbye!\n";
     m_running = false;
 }
@@ -179,6 +225,13 @@ void FunctionCalculator::runAction(Action action)
         case Action::Mul:          mul();                      break;
         case Action::Comp:         binaryFunc<Comp>();         break;
         case Action::Del:          del();                      break;
+        case Action::Read:         
+        {
+            auto inFile = m_inFile;
+            read();
+            m_inFile = inFile;
+            break;
+        }
         case Action::Help:         help();                     break;
         case Action::Exit:         exit();                     break;
     }
@@ -222,6 +275,11 @@ FunctionCalculator::ActionMap FunctionCalculator::createActions() const
             "del",
             "(ete) num - delete operation #num from the operation list",
             Action::Del
+        },
+        {
+            "read",
+            "file path - open and reads commands from file",
+            Action::Read
         },
         {
             "help",
