@@ -37,19 +37,22 @@ void FunctionCalculator::run(std::istream& istr)
         }
         catch (std::invalid_argument& e)
         {
+            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
             m_ostr << e.what() << std::endl;
             m_istr.clear();
             m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         catch (std::ios_base::failure)
         {
-            m_ostr << "You must enter a integer\n" << std::endl;
+            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
+            m_ostr << "A string has been inserted instead of a integer\n" << std::endl;
             m_istr.clear();
             m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
 
         catch (std::out_of_range& e)
         {
+            m_ostr << "Command: '" << m_istr.str() << "' is not legal" << std::endl;
             m_ostr << e.what() << std::endl;
             m_istr.clear();
             m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -57,8 +60,6 @@ void FunctionCalculator::run(std::istream& istr)
         if (!m_running)
             break;
 
-        const auto action = readAction();
-        runAction(action);
         //catch
         // std::cout << m_istr.str() << "is not legal" << std::endl;
         // std::cout << e,what() << std::endl;
@@ -80,12 +81,13 @@ void FunctionCalculator::eval()
             throw std::out_of_range("too few arguments");
 
         m_istr >> input;
-        //if(input.size() > m_maxStrLength) throw exception
-
+      
         if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
             throw std::out_of_range("too many arguments");
 
-        //if(operation->compute(input).size() > maxStrLen) throw exception
+        if(operation->compute(input).size() > m_maxStrLen) 
+            throw std::out_of_range("string is to long\n");
+        
         operation->print(m_ostr, input);
         m_ostr << " = " << operation->compute(input) << '\n';
     }
@@ -93,33 +95,52 @@ void FunctionCalculator::eval()
 void FunctionCalculator::substr()
 {
     int start_index,chars_length;
-    m_istr >> start_index>> chars_length;
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments");
+    m_istr >> start_index;
+
+    if (start_index < 0 || start_index > m_maxStrLen)
+        throw std::out_of_range(std::to_string(start_index) + " is out of range\n");
+
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments"); 
+    m_istr >> chars_length;
+
+    if (chars_length < 0 || chars_length > m_maxStrLen)
+        throw std::out_of_range(std::to_string(chars_length) + " is out of range\n");
+
     if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
+        throw std::out_of_range("too many arguments");
+
     m_operations.push_back(std::make_shared<SubStr>(start_index, chars_length));
 }
 
 void FunctionCalculator::mul()
 {
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments");
     int n;
     m_istr >> n;
-    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
+
+    if (n < 0)
+        throw std::invalid_argument(std::to_string(n) + " is not allowed\n");
+
+    
     if (auto i = readOperationIndex(); i)
     {
+        if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+            throw std::out_of_range("too many arguments");
         m_operations.push_back(std::make_shared<Mul>(n, m_operations[*i]));
     }
 }
 
 void FunctionCalculator::del()
 {
-    if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
     if (auto i = readOperationIndex(); i)
     {
+        if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+            throw std::out_of_range("too many arguments");
+
         m_operations.erase(m_operations.begin() + *i);
     }
 }
@@ -128,10 +149,13 @@ void FunctionCalculator::read()
 {
     std::string str;
 
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments");
+
     m_istr >> str;
+    
     if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
+        throw std::out_of_range("too many arguments");
 
     std::ifstream file;
 
@@ -143,15 +167,14 @@ void FunctionCalculator::read()
 
     m_inFile = true;
 
-    run(file);
-    
+    run(file);    
 }
 
 void FunctionCalculator::help()
 {
     if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
+        throw std::out_of_range("too many arguments");
+
     m_ostr << "The available commands are:\n";
     for (const auto& action : m_actions)
     {
@@ -163,8 +186,8 @@ void FunctionCalculator::help()
 void FunctionCalculator::exit()
 {
     if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-        //throw too many arguments
-        ;
+        throw std::out_of_range("too many arguments");
+
     m_ostr << "Goodbye!\n";
     m_running = false;
 }
@@ -183,6 +206,9 @@ void FunctionCalculator::printOperations() const
 
 std::optional<int> FunctionCalculator::readOperationIndex()
 {
+    if (m_istr.eof())
+        throw std::out_of_range("too few arguments");
+
     auto i = 0;
     m_istr >> i;
     
