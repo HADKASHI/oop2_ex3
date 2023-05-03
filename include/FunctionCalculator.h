@@ -30,6 +30,9 @@ private:
     {
         if (auto f0 = readOperationIndex(), f1 = readOperationIndex(); f0 && f1)
         {
+            if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
+                throw std::out_of_range("too many arguments");
+
             m_operations.push_back(std::make_shared<FuncType>(m_operations[*f0], m_operations[*f1]));
         }
     }
@@ -66,6 +69,7 @@ private:
     bool m_inFile = false;
     std::istringstream m_istr;
     std::ostream& m_ostr;
+    int m_maxStrLen = 20;
 
     std::optional<int> readOperationIndex();
     Action readAction();
