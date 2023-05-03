@@ -57,8 +57,6 @@ void FunctionCalculator::run(std::istream& istr)
         if (!m_running)
             break;
 
-        const auto action = readAction();
-        runAction(action);
         //catch
         // std::cout << m_istr.str() << "is not legal" << std::endl;
         // std::cout << e,what() << std::endl;
