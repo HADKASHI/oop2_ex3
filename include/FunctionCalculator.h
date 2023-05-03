@@ -21,6 +21,7 @@ private:
     void substr();
     void mul();
     void del();
+    void read();
     void help();
     void exit();
 
@@ -44,6 +45,7 @@ private:
         Mul,
         Comp,
         Del,
+        Read,
         Help,
         Exit,
     };
@@ -61,6 +63,7 @@ private:
     const ActionMap m_actions;
     OperationList m_operations;
     bool m_running = true;
+    bool m_inFile = false;
     std::istringstream m_istr;
     std::ostream& m_ostr;
 
