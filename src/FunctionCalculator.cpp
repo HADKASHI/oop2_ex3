@@ -27,12 +27,35 @@ void FunctionCalculator::run(std::istream& istr)
 
     std::string str;
 
-    while (m_running && std::getline(istr, str))
+    while (std::getline(istr, str))
     {
-        m_istr = std::istringstream(str);
-        m_istr.exceptions(std::ios::failbit | std::ios::badbit);
+        try {
+            m_istr = std::istringstream(str);
+            m_istr.exceptions(std::ios::failbit | std::ios::badbit);
+            const auto action = readAction();
+            runAction(action);
+        }
+        catch (std::invalid_argument& e)
+        {
+            m_ostr << e.what() << std::endl;
+            m_istr.clear();
+            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        catch (std::ios_base::failure)
+        {
+            m_ostr << "You must enter a integer\n" << std::endl;
+            m_istr.clear();
+            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
 
-        m_istr.clear();
+        catch (std::out_of_range& e)
+        {
+            m_ostr << e.what() << std::endl;
+            m_istr.clear();
+            m_istr.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        if (!m_running)
+            break;
 
         const auto action = readAction();
         runAction(action);
@@ -40,10 +63,11 @@ void FunctionCalculator::run(std::istream& istr)
         // std::cout << m_istr.str() << "is not legal" << std::endl;
         // std::cout << e,what() << std::endl;
         //if(m_inFile) ask user if he wants to continue
+
         m_ostr << '\n';
         printOperations();
         m_ostr << "Enter command ('help' for the list of available commands): ";
-    } 
+    }
 }
 
 void FunctionCalculator::eval()
@@ -52,12 +76,15 @@ void FunctionCalculator::eval()
     {
         const auto& operation = m_operations[*index];
         auto input = std::string();
+        if(m_istr.eof())
+            throw std::out_of_range("too few arguments");
+
         m_istr >> input;
         //if(input.size() > m_maxStrLength) throw exception
 
         if (!(m_istr.eof() || (m_istr >> std::ws).eof()))
-            //throw too many arguments
-            ;
+            throw std::out_of_range("too many arguments");
+
         //if(operation->compute(input).size() > maxStrLen) throw exception
         operation->print(m_ostr, input);
         m_ostr << " = " << operation->compute(input) << '\n';
@@ -159,12 +186,8 @@ std::optional<int> FunctionCalculator::readOperationIndex()
     auto i = 0;
     m_istr >> i;
     
-
-    if (i >= m_operations.size())
-    {
-        m_ostr << "Operation #" << i << " doesn't exist\n";
-        return {};
-    }
+    if (i >= m_operations.size() || i < 0)
+        throw std::invalid_argument("Operation #" + std::to_string(i) + " doesn't exist\n");
     return i;
 }
 
@@ -180,6 +203,7 @@ FunctionCalculator::Action FunctionCalculator::readAction()
     }
 
     //exception here - invalid action
+    throw std::invalid_argument("Action not found\n");
     return Action::Invalid;
 }
 
